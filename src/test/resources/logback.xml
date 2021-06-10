@@ -8,6 +8,9 @@
 	</appender>
 
 	<logger name="org.springframework.data" level="error" />
+	<logger name="org.springframework.orm.jpa.JpaTransactionManager" level="debug" />
+	<logger name="org.hibernate.SQL" level="debug" />
+	<logger name="org.hibernate.transaction" level="debug" />
 
 	<root level="error">
 		<appender-ref ref="console" />

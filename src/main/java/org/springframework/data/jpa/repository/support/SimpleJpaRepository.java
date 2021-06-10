@@ -80,7 +80,9 @@ import org.springframework.util.Assert;
  * @param <ID> the type of the entity's identifier
  */
 @Repository
-@Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
+@Transactional(
+		propagation = Propagation.SUPPORTS,
+		readOnly = true)
 public class SimpleJpaRepository<T, ID> implements JpaRepositoryImplementation<T, ID> {
 
 	private static final String ID_MUST_NOT_BE_NULL = "The given id must not be null!";

@@ -37,6 +37,9 @@ import org.springframework.transaction.TransactionException;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.DefaultTransactionStatus;
+
+import java.text.MessageFormat;
 
 /**
  * Integration test for transactional behaviour with nested transactions.<br>
@@ -83,6 +86,7 @@ public class NestedTransactionalRepositoryTests {
 		@Override
 		public void commit(TransactionStatus status) throws TransactionException {
 
+			System.out.println("committing");
 			txManager.commit(status);
 		}
 
@@ -93,9 +97,16 @@ public class NestedTransactionalRepositoryTests {
 			this.definition = definition;
 
 			TransactionStatus status = txManager.getTransaction(definition);
+
+			System.out.printf("getTransaction: %s %s%n", definition, toString(status));
+
 			if (status.isNewTransaction())
 				transactionsCreated++;
 			return status;
+		}
+
+		private String toString(TransactionStatus status) {
+			return String.format("new: %s completed: %s rollbackonly: %s", status.isNewTransaction(), status.isCompleted(), status.isRollbackOnly());
 		}
 
 		int getTransactionRequests() {
@@ -123,6 +134,7 @@ public class NestedTransactionalRepositoryTests {
 		@Override
 		public void rollback(TransactionStatus status) throws TransactionException {
 
+			System.out.println("rollback");
 			txManager.rollback(status);
 		}
 	}
@@ -138,6 +150,8 @@ public class NestedTransactionalRepositoryTests {
 		public int[] readEntityMultipleTimesRequired(Integer id);
 		@Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
 		public int countLoopChildren(Integer id);
+		@Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
+		public int countLoopChildrenDerived(Integer id);
 	}
 
 	@Test
@@ -177,6 +191,17 @@ public class NestedTransactionalRepositoryTests {
 		assertThat(count).isEqualTo(1);
 	}
 
+	@Test
+	public void testSupportLazyLoadOnDerivedQuery() {
+		int count = service.countLoopChildrenDerived(loopId);
+		// Transaction Manager should have been called 1 time for service + 0 time repository
+		assertThat(transactionManager.getTransactionRequests()).isEqualTo(1);
+		// No transactions must have been created
+		assertThat(transactionManager.getTransactionsCreated()).isEqualTo(0);
+		// The lazy collection must have 1 element
+		assertThat(count).isEqualTo(1);
+	}
+
 	public static class NestingServiceImpl implements NestingService {
 		@PersistenceContext
 		private EntityManager entityManager;
@@ -191,11 +216,13 @@ public class NestedTransactionalRepositoryTests {
 
 		@Override
 		public Integer init() {
+			System.out.println("before init");
 			Loop loop = new Loop();
 			// Needs initialised identifier
 			loop = repository.saveAndFlush(loop);
 			loop.setParent(loop);
 			repository.save(loop);
+			System.out.println("end of init");
 			return loop.getId();
 		}
 
@@ -225,7 +252,18 @@ public class NestedTransactionalRepositoryTests {
 
 		@Override
 		public int countLoopChildren(Integer id) {
-			return repository.findById(id).get().getChildren().size();
+			System.out.println("Before count");
+			int size = repository.findById(id).get().getChildren().size();
+			System.out.println("After count");
+			return size;
+		}
+
+		@Override
+		public int countLoopChildrenDerived(Integer id) {
+			System.out.println("Before count");
+			int size = repository.findDerivedById(id).getChildren().size();
+			System.out.println("After count");
+			return size;
 		}
 
 	}

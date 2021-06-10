@@ -17,8 +17,17 @@ package org.springframework.data.jpa.repository.sample;
 
 import org.springframework.data.jpa.domain.sample.Loop;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Optional;
 
 /**
  * @author Lachezar Dobrev
  */
-public interface LoopRepository extends JpaRepository<Loop, Integer> {}
+public interface LoopRepository extends JpaRepository<Loop, Integer> {
+	@Override
+	Optional<Loop> findById(Integer integer);
+
+	Loop findDerivedById(Integer id);
+}
